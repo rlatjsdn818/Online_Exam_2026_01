@@ -2,6 +2,8 @@ using UnityEngine;
 using Firebase.Database;
 using UnityEngine.UI;
 using PimDeWitte.UnityMainThreadDispatcher;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 public class UserRegister : MonoBehaviour
 {
@@ -12,11 +14,10 @@ public class UserRegister : MonoBehaviour
     [SerializeField] InputField NickNameInput;
     [SerializeField] Text checkText;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         database = FirebaseDatabase.GetInstance(
-            "https://shingutest039-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://shinguexam2601039-default-rtdb.asia-southeast1.firebasedatabase.app/"
             );
         reference = database.RootReference;
         dispatcher = UnityMainThreadDispatcher.Instance();
@@ -26,7 +27,7 @@ public class UserRegister : MonoBehaviour
     {
         string nickName = NickNameInput.text.Trim();
 
-        if (string.IsNullOrEmpty( nickName ) )
+        if (string.IsNullOrEmpty(nickName))
         {
             checkText.text = "닉네임을 입력하세요.";
             return;
@@ -40,6 +41,7 @@ public class UserRegister : MonoBehaviour
                 {
                     checkText.text = "Firebase 읽기 오류";
                 });
+                return;
             }
 
             DataSnapshot snapshot = task.Result;
@@ -48,7 +50,7 @@ public class UserRegister : MonoBehaviour
             {
                 dispatcher.Enqueue(() =>
                 {
-                    checkText.text = "이미 사용 중인 닉네임 입니다.";
+                    checkText.text = "이미 사용 중인 닉네임입니다.";
                 });
                 return;
             }
@@ -59,13 +61,33 @@ public class UserRegister : MonoBehaviour
     void CreateUser(string nickName)
     {
         DatabaseReference newUserRef = reference.Child("UserInfo").Push();
-
         string userKey = newUserRef.Key;
 
-        UserData userData = new UserData(nickName);
-        string json = JsonUtility.ToJson(userData);
+        Dictionary<string, int> inventory = new Dictionary<string, int>();
+        inventory["Medicine"] = 0;
+        inventory["Ammo"] = 0;
+        inventory["Knife"] = 0;
 
-        newUserRef.SetRawJsonValueAsync(json).ContinueWith(task =>
+        Dictionary<string, bool> unitList = new Dictionary<string, bool>();
+        unitList["Unit1"] = true;
+        for (int i = 2; i <= 5; i++)
+        {
+            unitList["Unit" + i] = false;
+        }
+
+        string inventoryJson = JsonConvert.SerializeObject(inventory);
+        string unitListJson = JsonConvert.SerializeObject(unitList);
+
+        Dictionary<string, object> userData = new Dictionary<string, object>
+        {
+            { "NickName", nickName },
+            { "Coin", 500 },
+            { "Score", 0 },
+            { "Inventory", inventoryJson },
+            { "UnitList", unitListJson }
+        };
+
+        newUserRef.SetRawJsonValueAsync(JsonConvert.SerializeObject(userData)).ContinueWith(task =>
         {
             if (task.IsFaulted)
             {
@@ -75,18 +97,15 @@ public class UserRegister : MonoBehaviour
                 });
                 return;
             }
+
             dispatcher.Enqueue(() =>
             {
-                PlayerPrefs.SetString("UserKey", userKey);
-                PlayerPrefs.SetString("UserNickName", nickName);
-                PlayerPrefs.Save();
-
                 checkText.text = "회원 가입 완료";
+                Debug.Log("회원 가입 성공: " + nickName);
             });
         });
     }
 
-    // Update is called once per frame
     void Update()
     {
         

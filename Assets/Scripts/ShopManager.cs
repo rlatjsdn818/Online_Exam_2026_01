@@ -1,10 +1,9 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using Firebase.Database;
 using UnityEngine.UI;
 using PimDeWitte.UnityMainThreadDispatcher;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 public class ShopManager : MonoBehaviour
 {
@@ -15,17 +14,19 @@ public class ShopManager : MonoBehaviour
     [Header("UI")]
     [SerializeField] Text CoinText;
     [SerializeField] Text MessageText;
+    
+    [SerializeField] Text MedicineCountText;
+    [SerializeField] Text AmmoCountText;
+    [SerializeField] Text KnifeCountText;
 
     string userKey;
-
     int currentCoin;
     Dictionary<string, int> inventory = new Dictionary<string, int>();
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         database = FirebaseDatabase.GetInstance(
-            "https://shingutest039-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://shinguexam2601039-default-rtdb.asia-southeast1.firebasedatabase.app/"
             );
 
         reference = database.RootReference;
@@ -40,7 +41,7 @@ public class ShopManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(userKey))
         {
-            MessageText.text = "·Î±×ÀÎ Á¤º¸°¡ ¾ø½À´Ï´Ù.";
+            MessageText.text = "ë¡œê·¸ì¸ ì •ë³´ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.";
             return;
         }
 
@@ -50,10 +51,11 @@ public class ShopManager : MonoBehaviour
             {
                 dispatcher.Enqueue(() =>
                 {
-                    MessageText.text = "À¯Àú Á¤º¸ ºÒ·¯¿À±â ½ÇÆÐ..";
+                    MessageText.text = "ìœ ì € ì •ë³´ ë¶ˆëŸ¬ì˜¤ê¸° ì‹¤íŒ¨";
                 });
                 return;
             }
+
             if (task.IsCompleted)
             {
                 DataSnapshot snapshot = task.Result;
@@ -65,9 +67,8 @@ public class ShopManager : MonoBehaviour
                 dispatcher.Enqueue(() =>
                 {
                     RefreshUI();
-                    MessageText.text = "À¯Àú Á¤º¸ ºÒ·¯¿À±â ¼º°ø";
+                    MessageText.text = "ìœ ì € ì •ë³´ ë¶ˆëŸ¬ì˜¤ê¸° ì™„ë£Œ";
                 });
-
             }
         });
     }
@@ -75,31 +76,51 @@ public class ShopManager : MonoBehaviour
     void RefreshUI()
     {
         CoinText.text = "Coin : " + currentCoin;
+        UpdateInventoryDisplay();
     }
 
-    public void OnClickBuyPotion()
+    void UpdateInventoryDisplay()
     {
-        BuyItem("Potion", 100);
+        if (MedicineCountText != null)
+            MedicineCountText.text = "Medicine : " + GetItemCount("Medicine");
+        if (AmmoCountText != null)
+            AmmoCountText.text = "Ammo : " + GetItemCount("Ammo");
+        if (KnifeCountText != null)
+            KnifeCountText.text = "Knife : " + GetItemCount("Knife");
     }
-    public void OnClickBuyBomb()
+
+    int GetItemCount(string itemName)
     {
-        BuyItem("Bomb", 50);
+        if (inventory.ContainsKey(itemName))
+            return inventory[itemName];
+        return 0;
     }
-    public void OnClickBuyTicket()
+
+    public void OnClickBuyMedicine()
     {
-        BuyItem("Ticket", 30);
+        BuyItem("Medicine", 30);
+    }
+
+    public void OnClickBuyAmmo()
+    {
+        BuyItem("Ammo", 50);
+    }
+
+    public void OnClickBuyKnife()
+    {
+        BuyItem("Knife", 250);
     }
 
     void BuyItem(string itemName, int price)
     {
         if (currentCoin < price)
         {
-            MessageText.text = "ÄÚÀÎÀÌ ºÎÁ·ÇÕ´Ï´Ù.";
+            MessageText.text = "ì½”ì¸ì´ ë¶€ì¡±í•©ë‹ˆë‹¤.";
             return;
         }
 
         currentCoin -= price;
-
+        
         if (inventory.ContainsKey(itemName))
         {
             inventory[itemName]++;
@@ -109,42 +130,38 @@ public class ShopManager : MonoBehaviour
             inventory.Add(itemName, 1);
         }
 
-        SaveUserData(itemName);
+        UpdateUserData();
+        MessageText.text = itemName + " êµ¬ë§¤ ì™„ë£Œ! (" + price + " Coin ì‚¬ìš©ë¨)";
     }
 
-    void SaveUserData(string boughtItemName)
+    void UpdateUserData()
     {
         string inventoryJson = JsonConvert.SerializeObject(inventory);
 
-        Dictionary<string, object> updateData = new Dictionary<string, object>();
-
-        updateData["Coin"] = currentCoin;
-        updateData["Inventory"] = inventoryJson;
-
-        reference.Child("UserInfo").Child(userKey).UpdateChildrenAsync(updateData).ContinueWith(task =>
+        reference.Child("UserInfo").Child(userKey).UpdateChildrenAsync(new Dictionary<string, object>
+        {
+            { "Coin", currentCoin },
+            { "Inventory", inventoryJson }
+        }).ContinueWith(task =>
         {
             if (task.IsFaulted)
             {
                 dispatcher.Enqueue(() =>
                 {
-                    MessageText.text = "±¸¸Å ÀúÀå ½ÇÆÐ";
+                    MessageText.text = "ë°ì´í„° ì €ìž¥ ì‹¤íŒ¨";
                 });
                 return;
             }
 
-            if (task.IsCompleted)
+            dispatcher.Enqueue(() =>
             {
-                dispatcher.Enqueue(() =>
-                {
-                    RefreshUI();
-                    MessageText.text = boughtItemName + "±¸¸Å ¿Ï·á";
-                });
-            }
+                RefreshUI();
+            });
         });
     }
-    // Update is called once per frame
+
     void Update()
     {
-        
+
     }
 }

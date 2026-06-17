@@ -32,9 +32,9 @@ public class UserData : MonoBehaviour
         }
 
         Dictionary<string, int> inventory = new Dictionary<string, int>();
-        inventory["Potion"] = 0;
-        inventory["Bomb"] = 0;
-        inventory["Ticket"] = 0;
+        inventory["Medicine"] = 0;
+        inventory["Ammo"] = 0;
+        inventory["Knife"] = 0;
 
         UnitList = JsonConvert.SerializeObject(unitList);
         Inventory = JsonConvert.SerializeObject(inventory);

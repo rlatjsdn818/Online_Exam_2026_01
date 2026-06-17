@@ -1,7 +1,10 @@
 using UnityEngine;
 using Firebase.Database;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using PimDeWitte.UnityMainThreadDispatcher;
+using System.Collections;
+
 public class UserLogin : MonoBehaviour
 {
     FirebaseDatabase database;
@@ -11,11 +14,10 @@ public class UserLogin : MonoBehaviour
     [SerializeField] InputField NickNameInput;
     [SerializeField] Text checkText;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         database = FirebaseDatabase.GetInstance(
-            "https://shingutest039-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://shinguexam2601039-default-rtdb.asia-southeast1.firebasedatabase.app/"
             );
 
         reference = database.RootReference;
@@ -40,6 +42,7 @@ public class UserLogin : MonoBehaviour
                 {
                     checkText.text = "Firebase 읽기 오류";
                 });
+                return;
             }
 
             DataSnapshot snapshot = task.Result;
@@ -48,7 +51,7 @@ public class UserLogin : MonoBehaviour
             {
                 dispatcher.Enqueue(() =>
                 {
-                    checkText.text = "존재하지 않는 닉네임 입니다.";
+                    checkText.text = "존재하지 않는 닉네임입니다.";
                 });
                 return;
             }
@@ -64,8 +67,10 @@ public class UserLogin : MonoBehaviour
                     PlayerPrefs.Save();
 
                     checkText.text = "로그인 성공";
+                    Debug.Log("로그인 성공: " + nickName);
 
-                    //Scene 이동 처리
+                    // Coroutine으로 변경
+                    StartCoroutine(LoadShopSceneAfterDelay(2f));
                 });
 
                 break;
@@ -73,7 +78,12 @@ public class UserLogin : MonoBehaviour
         });
     }
 
-    // Update is called once per frame
+    IEnumerator LoadShopSceneAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SceneManager.LoadScene("ShopScene");
+    }
+
     void Update()
     {
         
